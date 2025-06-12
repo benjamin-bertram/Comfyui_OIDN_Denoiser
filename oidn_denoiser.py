@@ -56,6 +56,7 @@ class OIDNDenoiser:
         return {
             "required": {
                 "image": ("IMAGE",),
+                "denoise_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01, "display": "slider"}),
             },
         }
 
@@ -63,22 +64,28 @@ class OIDNDenoiser:
     FUNCTION = "denoise"
     CATEGORY = "Image Denoising"
 
-    def denoise(self, image: torch.Tensor):
+    def denoise(self, image: torch.Tensor, denoise_strength: float):
         """
         Denoises the input image using OIDN.
 
         Args:
             image (torch.Tensor): The input image tensor (B, H, W, C).
+            denoise_strength (float): The strength of the denoising.
 
         Returns:
             (torch.Tensor,): A tuple containing the denoised image tensor.
         """
+        if denoise_strength == 0.0:
+            return (image,)
+
         image_np = image.cpu().numpy()
         
         denoised_images = []
         for i in range(image_np.shape[0]):
             img = image_np[i]
             denoised_img = self.oidn_instance.denoise(img)
+            if denoise_strength < 1.0:
+                denoised_img = img * (1.0 - denoise_strength) + denoised_img * denoise_strength
             denoised_images.append(denoised_img)
 
         # Convert back to torch.Tensor
